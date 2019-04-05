@@ -43,6 +43,7 @@ COMMITMSG="Scripted auto-commit on change (%d) by gitwatch.sh"
 LISTCHANGES=-1
 LISTCHANGES_COLOR="--color=always"
 GIT_DIR=""
+AMEND_TIME=30
 
 # Print a message about how to use this script
 shelp () {
@@ -331,6 +332,14 @@ eval $INCOMMAND | while read -r line; do
         STATUS=$($GIT status -s)
         if [ -n "$STATUS" ]; then # only commit if status shows tracked changes.
             $GIT add $GIT_ADD_ARGS # add file(s) to index
+
+            # if the staged file(s) are the same as in the last commit
+            # and the last commit is less then AMEND_TIME ago
+            if [ "$(git show --name-only --pretty="" HEAD)" == "$(git diff --staged --name-only)" ] \
+               && [ "$(( $(date +%s) - $AMEND_TIME ))" -le "$(git show -s --format=%ct HEAD)" ]; then
+                GIT_COMMIT_ARGS="${GIT_COMMIT_ARGS} --amend"
+            fi
+
             $GIT commit $GIT_COMMIT_ARGS -m"$FORMATTED_COMMITMSG" # construct commit message and commit
 
             if [ -n "$PUSH_CMD" ]; then
